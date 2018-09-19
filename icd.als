@@ -1,9 +1,9 @@
 // ===========================================================================
 // SWEN90010 2018 - Assignment 3 Submission
-// by <PUT YOUR NAMES HERE>
+// by Mingyang Zhang, Yang Xiong
 // ===========================================================================
 
-module ebs
+module icd
 open util/ordering[State] as ord
 
 // =========================== System State ==================================
@@ -121,6 +121,7 @@ pred send_mode_on[s, s' : State] {
 //                and nothing else changes
 pred recv_mode_on[s, s' : State] {
   some m: ModeOnMessage | m.source in s.authorised_card and 
+  s.icd_mode = ModeOff and s.impulse_mode = ModeOff and 
   no s'.network and 
   s'.icd_mode = ModeOn and 
   s'.impulse_mode = ModeOn and
@@ -194,8 +195,8 @@ pred recv_change_settings[s, s' : State] {
 //                last_action is AttackerAction
 //                and nothing else changes
 pred attacker_action[s, s' : State] {
-  //some a: AttackerAction| a.who in s.authorised_card and 
-  one s.network and no s'.network and 
+  one s.network and 
+  s.network.source = s'.network.source and
   s'.icd_mode = s.icd_mode and
   s'.joules_to_deliver = s.joules_to_deliver and
   s'.impulse_mode = s.impulse_mode and
@@ -293,9 +294,8 @@ check unexplained_assertion for 3 expect 0
 // Check that the device turns on only after properly instructed to
 // i.e. that the RecvModeOn action occurs only after a SendModeOn action has occurred
 assert turns_on_safe {
-  all s:State | (s.last_action in SendModeOn => (all s':ord/next[s] | s'.last_action in RecvModeOn))
+  all s':State | (s'.last_action in RecvModeOn => (some s:ord/prevs[s'] | s.last_action in SendModeOn))
 }
-
 // NOTE: you may want to adjust these thresholds for your own use
 check turns_on_safe for 5 but 8 State
 // The assertion does not hold.
@@ -312,4 +312,23 @@ check turns_on_safe for 5 but 8 State
 
 // Relationship to our HAZOP study:
 //
-// <FILL IN HERE>
+// None of the attacks was covered by our original HAZOP study, because we did not consider
+// the presence of an Attacker role. All HAZOP study was done on the operation of the system
+// alone.
+//
+// New hazards:
+//
+// #1
+// Guideword: Instead
+// Desgin item: Network messages are received by the intended receivers.
+// Deviation: Network messages are intercepted by an attacker.
+//
+// #2
+// Guideword: No
+// Desgin item: Network messages received by receivers are from the indicated source in the message.
+// Deviation: Network message received are not from the sources indicated in the messages.
+//
+// #3
+// Guideword: No
+// Design item: A network message received by the receiver is the same as the message sent by the source.
+// Deviant: A network message received by the receiver is not the same as the message sent by the source.
